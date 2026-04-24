@@ -71,6 +71,10 @@ void DJS103Widget::createUI()
     QWidget *selectMemoryFrame = createSelectMemoryDisplay(monoFont, boldFont);
     regLayout->addWidget(selectMemoryFrame, 0, 1, Qt::AlignLeft | Qt::AlignTop);
 
+    // Create Start Memory (启存) LED display - 12 bits
+    QWidget *startMemoryFrame = createStartMemoryDisplay(monoFont, boldFont);
+    regLayout->addWidget(startMemoryFrame, 0, 2, Qt::AlignLeft | Qt::AlignTop);
+
     // LED display for 31-bit last instruction
     // Groups: 1 (sign bit30), 6 (opcode bit24-29), 12 (addr1 bit12-23), 12 (addr2 bit0-11)
     // Sub-groups of 3 LEDs labeled 1,2,4 (weight within each octal digit)
@@ -1018,6 +1022,112 @@ QWidget* DJS103Widget::createSelectMemoryDisplay(QFont& monoFont, QFont& boldFon
     selectMemoryVLayout->addLayout(selectMemoryOuterLayout);
 
     return selectMemoryFrame;
+}
+
+QWidget* DJS103Widget::createStartMemoryDisplay(QFont& monoFont, QFont& boldFont)
+{
+    // 启存：12位，不分组，连续显示
+    static const char *startMemoryGroupName = "启存";
+
+    // 创建主框架，设置边框和背景样式（与createSelectMemoryDisplay风格一致）
+    QWidget *startMemoryFrame = new QWidget;
+    startMemoryFrame->setObjectName("startMemoryFrame");
+    startMemoryFrame->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+    startMemoryFrame->setStyleSheet("QWidget#startMemoryFrame {"
+                                     "border: 2px solid #aaa;"
+                                     "border-radius: 8px;"
+                                     "padding: 8px;"
+                                     "background-color: rgba(240, 240, 240, 30);"
+                                     "}");
+
+    // 主垂直布局：标题 + LED/Switch行
+    QVBoxLayout *startMemoryVLayout = new QVBoxLayout(startMemoryFrame);
+
+    // 添加标题标签（"启存"），居中对齐，使用粗体
+    QLabel *startMemoryTitle = new QLabel(tr(startMemoryGroupName));
+    startMemoryTitle->setAlignment(Qt::AlignCenter);
+    startMemoryTitle->setFont(boldFont);
+    startMemoryVLayout->addWidget(startMemoryTitle);
+
+    // 外层水平布局：包含位显示区域 + 弹性空间
+    QHBoxLayout *startMemoryOuterLayout = new QHBoxLayout;
+
+    // 内层垂直布局：放置LED行和Switch行
+    QVBoxLayout *bitsVLayout = new QVBoxLayout;
+    bitsVLayout->setSpacing(2);  // LED和Switch之间的垂直间距
+
+    // LED行水平布局（连续显示，每3位之间加小间距）
+    QHBoxLayout *ledHLayout = new QHBoxLayout;
+    ledHLayout->setSpacing(2);
+    ledHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    // 开关行水平布局
+    QHBoxLayout *switchHLayout = new QHBoxLayout;
+    switchHLayout->setSpacing(2);
+    switchHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    // 12位，位索引从11到0，连续显示
+    for (int i = 11; i >= 0; --i) {
+        // 每3位一组计算权重（4,2,1循环）
+        int posInGroup = (11 - i) % 3;
+        int weight = (posInGroup == 0) ? 4 : (posInGroup == 1 ? 2 : 1);
+
+        // LED指示灯
+        m_startMemoryLeds[i] = new QLabel;
+        m_startMemoryLeds[i]->setFixedSize(14, 14);
+        m_startMemoryLeds[i]->setAlignment(Qt::AlignCenter);
+        m_startMemoryLeds[i]->setMargin(0);
+        m_startMemoryLeds[i]->setStyleSheet(
+            "QLabel { background-color: #3a3a3a; border: 1px solid #555555; border-radius: 7px; }");
+        m_startMemoryLeds[i]->setToolTip(tr("启存位 %1").arg(i));
+        ledHLayout->addWidget(m_startMemoryLeds[i]);
+
+        // 开关容器（垂直布局：权重标签 + 按钮）
+        QWidget *switchContainer = new QWidget;
+        QVBoxLayout *switchVLayout = new QVBoxLayout(switchContainer);
+        switchVLayout->setSpacing(1);
+        switchVLayout->setContentsMargins(0, 0, 0, 0);
+        switchVLayout->setAlignment(Qt::AlignCenter);
+
+        // 权重标签
+        QLabel *weightLabel = new QLabel(QString::number(weight));
+        weightLabel->setFixedSize(14, 10);
+        weightLabel->setAlignment(Qt::AlignCenter);
+        weightLabel->setFont(QFont("Monospace", 6));
+        switchVLayout->addWidget(weightLabel);
+
+        // 开关按钮
+        m_startMemorySwitches[i] = new QPushButton;
+        m_startMemorySwitches[i]->setFixedSize(14, 14);
+        m_startMemorySwitches[i]->setCheckable(true);
+        m_startMemorySwitches[i]->setChecked(false);
+        m_startMemorySwitches[i]->setToolTip(tr("启存位 %1 开关").arg(i));
+        m_startMemorySwitches[i]->setStyleSheet(
+            "QPushButton { background-color: #ddd; border: 1px solid #999; border-radius: 7px; }"
+            "QPushButton:checked { background-color: #4CAF50; border: 1px solid #388E3C; }"
+        );
+        switchVLayout->addWidget(m_startMemorySwitches[i]);
+
+        switchHLayout->addWidget(switchContainer);
+
+        // 每3位之间加小间距（最后一组不加）
+        if (i > 0 && (11 - i) % 3 == 2) {
+            ledHLayout->addSpacing(4);
+            switchHLayout->addSpacing(4);
+        }
+    }
+
+    // 将LED行和Switch行添加到垂直布局
+    bitsVLayout->addLayout(ledHLayout);
+    bitsVLayout->addSpacing(15);  // LED和Switch之间的垂直间距
+    bitsVLayout->addLayout(switchHLayout);
+
+    // 添加到外层布局，并添加右侧弹性空间
+    startMemoryOuterLayout->addLayout(bitsVLayout);
+    startMemoryOuterLayout->addStretch(1);
+    startMemoryVLayout->addLayout(startMemoryOuterLayout);
+
+    return startMemoryFrame;
 }
 
 void DJS103Widget::updateMemoryDisplay()

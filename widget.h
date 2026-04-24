@@ -83,11 +83,14 @@ private:
     // LED display for 31-bit register
     static const int NUM_LEDS = 31;
     static const int SELECT_MEMORY_BITS = 12;  // 选存位数：12位
+    static const int START_MEMORY_BITS = 12;   // 启存位数：12位
     QLabel *m_leds[NUM_LEDS];      // last instruction LEDs
     QLabel *m_regCLeds[NUM_LEDS];   // reg C LEDs
     QPushButton *m_regCSwitches[NUM_LEDS];   // reg C DIP switches
-    QLabel *m_selectMemoryLeds[SELECT_MEMORY_BITS];   // 选存 LEDs (10位)
+    QLabel *m_selectMemoryLeds[SELECT_MEMORY_BITS];   // 选存 LEDs
     QPushButton *m_selectMemorySwitches[SELECT_MEMORY_BITS];   // 选存 DIP switches
+    QLabel *m_startMemoryLeds[START_MEMORY_BITS];   // 启存 LEDs
+    QPushButton *m_startMemorySwitches[START_MEMORY_BITS];   // 启存 DIP switches
 
     // Code editor
     QPlainTextEdit *m_codeEdit;
@@ -115,6 +118,7 @@ private:
     QWidget* createRegCLedDisplay(QFont& monoFont, QFont& boldFont);
     void updateRegCLedDisplay(int32_t value);
     QWidget* createSelectMemoryDisplay(QFont& monoFont, QFont& boldFont);
+    QWidget* createStartMemoryDisplay(QFont& monoFont, QFont& boldFont);
 };
 
 #endif // DJS103WIDGET_H
