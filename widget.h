@@ -82,7 +82,7 @@ private:
 
     // LED display for 31-bit register
     static const int NUM_LEDS = 31;
-    static const int SELECT_MEMORY_BITS = 10;  // 选存位数：4位+6位
+    static const int SELECT_MEMORY_BITS = 12;  // 选存位数：12位
     QLabel *m_leds[NUM_LEDS];      // last instruction LEDs
     QLabel *m_regCLeds[NUM_LEDS];   // reg C LEDs
     QPushButton *m_regCSwitches[NUM_LEDS];   // reg C DIP switches

@@ -1,0 +1,10 @@
+*.o
+
+moc_*
+.qmake.stash
+
+doc/*
+
+Makefile
+
+djs103
