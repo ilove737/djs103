@@ -63,80 +63,9 @@ void DJS103Widget::createUI()
     QFont boldFont("Monospace", 10, QFont::Bold);
     QFont memFont("Monospace", 11, QFont::Bold);
 
-    // === Accumulator LED display (above accLabel) ===
-    static const int accLedGroups[] = {1, 30};
-    static const int accNumGroups = 2;
-    static const char *accGroupNames[] = {"符号", "数值"};
-
-    QVBoxLayout *accLedVLayout = new QVBoxLayout;
-
-    QHBoxLayout *accLedOuterLayout = new QHBoxLayout;
-    QHBoxLayout *accLedRowLayout = new QHBoxLayout;
-    accLedRowLayout->setSpacing(30);
-
-    int accBitIndex = 30;
-    for (int g = 0; g < accNumGroups; ++g) {
-        int groupSize = accLedGroups[g];
-
-        QVBoxLayout *groupVLayout = new QVBoxLayout;
-        groupVLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        groupVLayout->setSpacing(4);
-
-        QLabel *groupLabel = new QLabel(tr(accGroupNames[g]));
-        groupLabel->setFont(QFont("Monospace", 7));
-        groupLabel->setAlignment(Qt::AlignCenter);
-        groupVLayout->addWidget(groupLabel);
-
-        QHBoxLayout *groupLedLayout = new QHBoxLayout;
-        groupLedLayout->setSpacing(15);
-
-        int remaining = groupSize;
-        while (remaining > 0) {
-            int subSize = (remaining >= 3) ? 3 : remaining;
-
-            QVBoxLayout *subVLayout = new QVBoxLayout;
-            subVLayout->setSpacing(0);
-
-            QHBoxLayout *subLedLayout = new QHBoxLayout;
-            subLedLayout->setSpacing(1);
-            for (int j = 0; j < subSize; ++j) {
-                int i = accBitIndex - j;
-                m_accLeds[i] = new QLabel;
-                m_accLeds[i]->setFixedSize(14, 14);
-                m_accLeds[i]->setAlignment(Qt::AlignCenter);
-                m_accLeds[i]->setMargin(0);
-                m_accLeds[i]->setToolTip(tr("位 %1").arg(i));
-                subLedLayout->addWidget(m_accLeds[i]);
-            }
-            subVLayout->addLayout(subLedLayout);
-
-            QHBoxLayout *subLabelLayout = new QHBoxLayout;
-            subLabelLayout->setSpacing(1);
-            static const char *weightLabels[] = {"4", "2", "1"};
-            for (int j = 0; j < subSize; ++j) {
-                QLabel *wLabel = new QLabel(tr(weightLabels[2 - (subSize - 1 - j)]));
-                wLabel->setFixedSize(14, 10);
-                wLabel->setAlignment(Qt::AlignCenter);
-                wLabel->setFont(QFont("Monospace", 6));
-                subLabelLayout->addWidget(wLabel);
-            }
-            subVLayout->addLayout(subLabelLayout);
-
-            groupLedLayout->addLayout(subVLayout);
-
-            accBitIndex -= subSize;
-            remaining -= subSize;
-        }
-
-        groupVLayout->addLayout(groupLedLayout);
-        accLedRowLayout->addLayout(groupVLayout);
-    }
-
-    accLedOuterLayout->addLayout(accLedRowLayout);
-    accLedOuterLayout->addStretch(1);
-    accLedVLayout->addLayout(accLedOuterLayout);
-
-    regLayout->addLayout(accLedVLayout, 0, 0, 1, 2);
+    // Create Reg C LED display
+    QWidget *regCLedFrame = createRegCLedDisplay(monoFont, boldFont);
+    regLayout->addWidget(regCLedFrame, 0, 0, Qt::AlignLeft | Qt::AlignTop);
 
     // LED display for 31-bit last instruction
     // Groups: 1 (sign bit30), 6 (opcode bit24-29), 12 (addr1 bit12-23), 12 (addr2 bit0-11)
@@ -146,20 +75,20 @@ void DJS103Widget::createUI()
     static const char *groupNames[] = {"符号", "操作码", "地址A", "地址B"};
 
     // Register text labels
-    m_accLabel = new QLabel(tr("累加器 r: 00000000000 (八进制)"));
-    m_accValueLabel = new QLabel(tr("= 0.0000000000 (十进制小数)"));
+    m_regCLabel = new QLabel(tr("累加器 r: 00000000000 (八进制)"));
+    m_regCValueLabel = new QLabel(tr("= 0.0000000000 (十进制小数)"));
     m_pcLabel = new QLabel(tr("程序计数器 PC: 0000 (八进制) = 0 (十进制)"));
     m_statusLabel = new QLabel(tr("状态: 停机"));
     m_instLabel = new QLabel(tr("上次指令: 无"));
 
-    m_accLabel->setFont(monoFont);
-    m_accValueLabel->setFont(boldFont);
+    m_regCLabel->setFont(monoFont);
+    m_regCValueLabel->setFont(boldFont);
     m_pcLabel->setFont(monoFont);
     m_statusLabel->setFont(monoFont);
     m_instLabel->setFont(monoFont);
 
-    regLayout->addWidget(m_accLabel, 1, 0);
-    regLayout->addWidget(m_accValueLabel, 1, 1);
+    regLayout->addWidget(m_regCLabel, 1, 0);
+    regLayout->addWidget(m_regCValueLabel, 1, 1);
     regLayout->addWidget(m_pcLabel, 2, 0);
     regLayout->addWidget(m_statusLabel, 2, 1);
 
@@ -686,29 +615,29 @@ void DJS103Widget::onRunTick()
 
 void DJS103Widget::updateRegisterDisplay()
 {
-    int32_t acc = m_emulator.getAccumulator();
+    int32_t regC = m_emulator.getAccumulator();
     int32_t pc = m_emulator.getProgramCounter();
-    double accValue = m_emulator.getAccumulatorValue();
+    double regCValue = m_emulator.getAccumulatorValue();
 
-    m_accLabel->setText(tr("累加器 r: %1 (八进制)")
-                        .arg(acc & DJS103Emulator::WORD_MASK, 11, 8, QChar('0')));
+    m_regCLabel->setText(tr("累加器 r: %1 (八进制)")
+                        .arg(regC & DJS103Emulator::WORD_MASK, 11, 8, QChar('0')));
     // 智能精度显示：找到最短的有效表示，避免暴露定点量化误差
-    QString accStr;
-    double absVal = fabs(accValue);
+    QString regCStr;
+    double absVal = fabs(regCValue);
     if (absVal == 0.0) {
-        accStr = "0";
+        regCStr = "0";
     } else {
         for (int prec = 1; prec <= 10; ++prec) {
-            QString test = QString::number(accValue, 'f', prec);
-            if (fabs(test.toDouble() - accValue) < 1e-12) {
-                accStr = test;
+            QString test = QString::number(regCValue, 'f', prec);
+            if (fabs(test.toDouble() - regCValue) < 1e-12) {
+                regCStr = test;
                 break;
             }
         }
-        if (accStr.isEmpty())
-            accStr = QString::number(accValue, 'f', 10);
+        if (regCStr.isEmpty())
+            regCStr = QString::number(regCValue, 'f', 10);
     }
-    m_accValueLabel->setText(tr("= %1 (十进制小数)").arg(accStr));
+    m_regCValueLabel->setText(tr("= %1 (十进制小数)").arg(regCStr));
     m_pcLabel->setText(tr("程序计数器 PC: %1 (八进制) = %2 (十进制)")
                        .arg(pc, 4, 8, QChar('0'))
                        .arg(pc));
@@ -741,25 +670,13 @@ void DJS103Widget::updateRegisterDisplay()
         m_instLabel->setText(tr("上次指令: 无"));
     }
 
-    // Update accumulator LED display
-    int32_t accLedBits = acc & DJS103Emulator::WORD_MASK;
-    for (int i = 0; i < NUM_LEDS; ++i) {
-        bool bitOn = (accLedBits >> i) & 1;
-        if (bitOn) {
-            m_accLeds[i]->setStyleSheet(
-                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                "border-radius: 7px; }");
-        } else {
-            m_accLeds[i]->setStyleSheet(
-                "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
-                "border-radius: 7px; }");
-        }
-    }
+    // Update regCumulator LED display
+    updateRegCLedDisplay(regC);
 
     // Update LED display for 31-bit last instruction
-    int32_t accBits = lastInst & DJS103Emulator::WORD_MASK;
+    int32_t regCBits = lastInst & DJS103Emulator::WORD_MASK;
     for (int i = 0; i < NUM_LEDS; ++i) {
-        bool bitOn = (accBits >> i) & 1;
+        bool bitOn = (regCBits >> i) & 1;
         if (bitOn) {
             // LED on: bright colored circle
             m_leds[i]->setStyleSheet(
@@ -774,6 +691,225 @@ void DJS103Widget::updateRegisterDisplay()
     }
 
     highlightCurrentLine();
+}
+
+void DJS103Widget::updateRegCLedDisplay(int32_t value)
+{
+    int32_t regCLedBits = value & DJS103Emulator::WORD_MASK;
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        bool bitOn = (regCLedBits >> i) & 1;
+        if (bitOn) {
+            m_regCLeds[i]->setStyleSheet(
+                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
+                "border-radius: 7px; }");
+        } else {
+            m_regCLeds[i]->setStyleSheet(
+                "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+                "border-radius: 7px; }");
+        }
+    }
+}
+
+/**
+ * @brief 创建寄存器C的LED显示和开关控制面板
+ * @param monoFont 等宽字体，用于数字显示
+ * @param boldFont 粗体字体，用于标题
+ * @return 包含LED显示和开关控制的QWidget
+ *
+ * 寄存器C共有31位（位0-位30），分为3组：7位、12位、12位
+ * 每位包含：LED指示灯（显示当前值）+ 开关按钮（可切换值）
+ * 布局采用每3位一组，便于查看八进制/二进制值
+ * 每组3位对应的权重标签为：4、2、1（高位到低位）
+ */
+QWidget* DJS103Widget::createRegCLedDisplay(QFont& monoFont, QFont& boldFont)
+{
+    // 寄存器C分组配置：共31位，分为3组
+    // 第1组：7位（位30-24），第2组：12位（位23-12），第3组：12位（位11-0）
+    static const int regCLedGroups[] = {7, 12, 12};
+    static const int regCNumGroups = 3;
+    static const char *regCGroupNames = "寄存器 C";
+
+    // 创建主框架，设置边框和背景样式
+    QWidget *regCLedFrame = new QWidget;
+    // 设置对象名用于样式表定位，限制水平方向最大尺寸
+    regCLedFrame->setObjectName("regCLedFrame");
+    regCLedFrame->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+    // 样式：灰色边框、圆角、内边距、半透明背景
+    regCLedFrame->setStyleSheet("QWidget#regCLedFrame {"
+                                "border: 2px solid #aaa;"
+                                "border-radius: 8px;"
+                                "padding: 8px;"
+                                "background-color: rgba(240, 240, 240, 30);"
+                                "}");
+
+    // 主垂直布局：标题 + LED/Switch行
+    QVBoxLayout *regCLedVLayout = new QVBoxLayout(regCLedFrame);
+
+    // 添加标题标签（"寄存器 C"），居中对齐，使用粗体
+    QLabel *regCTitle = new QLabel(tr(regCGroupNames));
+    regCTitle->setAlignment(Qt::AlignCenter);
+    regCTitle->setFont(boldFont);
+    regCLedVLayout->addWidget(regCTitle);
+
+    // 外层水平布局：包含位显示区域 + 弹性空间
+    QHBoxLayout *regCLedOuterLayout = new QHBoxLayout;
+    // 内层水平布局：放置各分组（组间距20px）
+    QHBoxLayout *regCLedRowLayout = new QHBoxLayout;
+    regCLedRowLayout->setSpacing(20);
+
+    // 从最高位（位30）开始处理
+    int regCBitIndex = 30;
+    // 遍历每个分组（7位组、12位组、12位组）
+    for (int g = 0; g < regCNumGroups; ++g) {
+        int groupSize = regCLedGroups[g];  // 当前组的位数
+
+        // 每组创建一个垂直布局：LED行 + 间距 + Switch行
+        QVBoxLayout *groupVLayout = new QVBoxLayout;
+        groupVLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        groupVLayout->setSpacing(2);  // LED和Switch行内间距
+
+        // LED指示灯水平布局（显示当前位值），每3位一组
+        QHBoxLayout *ledHLayout = new QHBoxLayout;
+        ledHLayout->setSpacing(2);  // LED之间的间距
+        ledHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+        // 开关按钮水平布局（用于设置位值），与LED对齐
+        QHBoxLayout *switchHLayout = new QHBoxLayout;
+        switchHLayout->setSpacing(2);  // 开关之间的间距
+        switchHLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+        int bitPos = 0;  // 当前组内已处理的位数
+        // 计算余数：如果组大小不是3的倍数，最高位的余数单独处理
+        int remaining = groupSize % 3;
+
+        // 先处理可能单独的最高位（余数位）
+        if (remaining > 0) {
+            // 创建余数位的LED指示灯（1位或2位），从高位到低位排列
+            for (int j = 0; j < remaining; ++j) {
+                int i = regCBitIndex - j;  // 位索引（从高位开始）
+                m_regCLeds[i] = new QLabel;
+                m_regCLeds[i]->setFixedSize(14, 14);  // 14x14像素的方形LED
+                m_regCLeds[i]->setAlignment(Qt::AlignCenter);
+                m_regCLeds[i]->setMargin(0);
+                m_regCLeds[i]->setToolTip(tr("位 %1").arg(i));  // 鼠标悬停显示位号
+                ledHLayout->addWidget(m_regCLeds[i]);
+            }
+
+            // 创建余数位对应的开关按钮（带权重标签）
+            for (int j = 0; j < remaining; ++j) {
+                int i = regCBitIndex - j;
+                // 权重计算：如果只有1位权重为1，如果有2位则第一位权重为2
+                int weight = (remaining == 1) ? 1 : (j == 0 ? 2 : 1);
+
+                // 创建开关容器（垂直布局：权重标签 + 按钮）
+                QWidget *switchContainer = new QWidget;
+                QVBoxLayout *switchVLayout = new QVBoxLayout(switchContainer);
+                switchVLayout->setSpacing(1);  // 标签和按钮之间的间距
+                switchVLayout->setContentsMargins(0, 0, 0, 0);  // 无外边距
+                switchVLayout->setAlignment(Qt::AlignCenter);
+
+                // 权重标签（显示该位的二进制权重）
+                QLabel *weightLabel = new QLabel(QString::number(weight));
+                weightLabel->setFixedSize(14, 10);  // 小号标签
+                weightLabel->setAlignment(Qt::AlignCenter);
+                weightLabel->setFont(QFont("Monospace", 6));  // 6号等宽字体
+                switchVLayout->addWidget(weightLabel);
+
+                // 开关按钮（可切换状态，模拟开关）
+                m_regCSwitches[i] = new QPushButton;
+                m_regCSwitches[i]->setFixedSize(14, 14);  // 与LED相同大小
+                m_regCSwitches[i]->setCheckable(true);  // 可切换状态
+                m_regCSwitches[i]->setChecked(false);  // 默认关闭
+                m_regCSwitches[i]->setToolTip(tr("位 %1 开关").arg(i));
+                // 样式：灰色未选中，绿色选中
+                m_regCSwitches[i]->setStyleSheet(
+                    "QPushButton { background-color: #ddd; border: 1px solid #999; border-radius: 7px; }"
+                    "QPushButton:checked { background-color: #4CAF50; border: 1px solid #388E3C; }"
+                );
+                switchVLayout->addWidget(m_regCSwitches[i]);
+
+                switchHLayout->addWidget(switchContainer);
+            }
+            bitPos = remaining;  // 更新已处理的位数
+
+            // 在余数位和后续的3位组之间添加间距
+            ledHLayout->addSpacing(4);
+            switchHLayout->addSpacing(4);
+        }
+
+        // 处理完整的3位组（每3位一组，方便查看八进制/二进制值）
+        int numFullFrames = groupSize / 3;
+        for (int f = 0; f < numFullFrames; ++f) {
+            // 创建3个LED指示灯（高位到低位：位2、位1、位0）
+            for (int j = 0; j < 3; ++j) {
+                int i = regCBitIndex - bitPos - j;  // 计算当前位索引
+                m_regCLeds[i] = new QLabel;
+                m_regCLeds[i]->setFixedSize(14, 14);  // 14x14像素方形LED
+                m_regCLeds[i]->setAlignment(Qt::AlignCenter);
+                m_regCLeds[i]->setMargin(0);
+                m_regCLeds[i]->setToolTip(tr("位 %1").arg(i));  // 鼠标悬停显示位号
+                ledHLayout->addWidget(m_regCLeds[i]);
+            }
+
+            // 创建3个对应的开关按钮（带权重标签：4、2、1）
+            for (int j = 0; j < 3; ++j) {
+                int i = regCBitIndex - bitPos - j;
+                // 权重计算：最高位=4，中间位=2，最低位=1（二进制4-2-1码）
+                int weight = 1 << (2 - j);
+
+                // 创建开关容器（垂直布局：权重标签在上，按钮在下）
+                QWidget *switchContainer = new QWidget;
+                QVBoxLayout *switchVLayout = new QVBoxLayout(switchContainer);
+                switchVLayout->setSpacing(1);  // 标签和按钮间距1px
+                switchVLayout->setContentsMargins(0, 0, 0, 0);  // 无外边距
+                switchVLayout->setAlignment(Qt::AlignCenter);
+
+                // 权重标签（4、2、1）
+                QLabel *weightLabel = new QLabel(QString::number(weight));
+                weightLabel->setFixedSize(14, 10);  // 小号标签与按钮同宽
+                weightLabel->setAlignment(Qt::AlignCenter);
+                weightLabel->setFont(QFont("Monospace", 6));  // 6号等宽字体
+                switchVLayout->addWidget(weightLabel);
+
+                // 开关按钮（可切换状态）
+                m_regCSwitches[i] = new QPushButton;
+                m_regCSwitches[i]->setFixedSize(14, 14);  // 与LED相同大小
+                m_regCSwitches[i]->setCheckable(true);  // 可切换状态
+                m_regCSwitches[i]->setChecked(false);  // 默认关闭
+                m_regCSwitches[i]->setToolTip(tr("位 %1 开关").arg(i));
+                // 样式：未选中灰色，选中绿色
+                m_regCSwitches[i]->setStyleSheet(
+                    "QPushButton { background-color: #ddd; border: 1px solid #999; border-radius: 7px; }"
+                    "QPushButton:checked { background-color: #4CAF50; border: 1px solid #388E3C; }"
+                );
+                switchVLayout->addWidget(m_regCSwitches[i]);
+
+                switchHLayout->addWidget(switchContainer);
+            }
+            bitPos += 3;  // 更新已处理的位数
+
+            // 在3位组之间添加小间距（最后一组不加）
+            if (f < numFullFrames - 1) {
+                ledHLayout->addSpacing(4);
+                switchHLayout->addSpacing(4);
+            }
+        }
+        regCBitIndex -= groupSize;  // 更新到下一组的起始位索引
+
+        // 将LED行和Switch行添加到组垂直布局（中间加15px垂直间距）
+        groupVLayout->addLayout(ledHLayout);
+        groupVLayout->addSpacing(15);  // LED和Switch之间的垂直间距
+        groupVLayout->addLayout(switchHLayout);
+        // 将当前组（包含LED和Switch）添加到行布局
+        regCLedRowLayout->addLayout(groupVLayout);
+    }
+
+    // 将行布局添加到外层布局，并添加右侧弹性空间（右对齐效果）
+    regCLedOuterLayout->addLayout(regCLedRowLayout);
+    regCLedOuterLayout->addStretch(1);  // 右侧留白，使内容左对齐
+    regCLedVLayout->addLayout(regCLedOuterLayout);
+
+    return regCLedFrame;  // 返回完整的寄存器C显示控件
 }
 
 void DJS103Widget::updateMemoryDisplay()
