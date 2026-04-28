@@ -45,6 +45,7 @@ void DJS103Emulator::reset()
     m_memory.fill(0);
     m_accumulator = 0;
     m_programCounter = 0;
+    m_entryAddress = 0;
     m_running = false;
     m_halted = false;
     m_lastInstruction = 0;

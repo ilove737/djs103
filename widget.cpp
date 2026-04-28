@@ -679,6 +679,35 @@ void DJS103Widget::updateRegisterDisplay()
     // Update regCumulator LED display
     updateRegCLedDisplay(regC);
 
+    // Update Select Memory LED display with PC value (12 bits)
+    for (int i = 0; i < SELECT_MEMORY_BITS; ++i) {
+        bool bitOn = (pc >> i) & 1;
+        if (bitOn) {
+            m_selectMemoryLeds[i]->setStyleSheet(
+                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
+                "border-radius: 7px; }");
+        } else {
+            m_selectMemoryLeds[i]->setStyleSheet(
+                "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+                "border-radius: 7px; }");
+        }
+    }
+
+    // Update Start Memory LED display with entry address (12 bits)
+    int32_t entryAddr = m_emulator.getEntryAddress();
+    for (int i = 0; i < START_MEMORY_BITS; ++i) {
+        bool bitOn = (entryAddr >> i) & 1;
+        if (bitOn) {
+            m_startMemoryLeds[i]->setStyleSheet(
+                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
+                "border-radius: 7px; }");
+        } else {
+            m_startMemoryLeds[i]->setStyleSheet(
+                "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+                "border-radius: 7px; }");
+        }
+    }
+
     // Update LED display for 31-bit last instruction
     int32_t regCBits = lastInst & DJS103Emulator::WORD_MASK;
     for (int i = 0; i < NUM_LEDS; ++i) {
@@ -1291,8 +1320,10 @@ void DJS103Widget::loadM3Program(const QString &text)
                 addrStr = addrStr.left(semiPos).trimmed();
             bool ok = false;
             int addr = addrStr.toInt(&ok, 8);
-            if (ok)
+            if (ok) {
                 execAddr = addr % DJS103Emulator::MEMORY_SIZE;
+                m_emulator.setEntryAddress(addr);
+            }
             continue;
         }
 
@@ -1453,12 +1484,17 @@ void DJS103Widget::loadM3Program(const QString &text)
     }
 
     // Set execution address
-    if (execAddr >= 0)
+    if (execAddr >= 0) {
         m_emulator.setProgramCounter(execAddr);
-    else
+    } else {
         m_emulator.setProgramCounter(startAddr);
+    }
+    // 总是设置入口地址（@指定时使用指定值，否则使用起始地址）
+    m_emulator.setEntryAddress(execAddr >= 0 ? execAddr : startAddr);
 
     m_emulator.setAccumulator(0);
+    // 显示程序入口地址信息到输出控制台
+    appendOutput(tr("启存地址: %1 (八进制)").arg(m_emulator.getEntryAddress(), 4, 8, QChar('0')));
 }
 
 void DJS103Widget::onHelp()

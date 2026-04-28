@@ -52,6 +52,8 @@ public:
     double getAccumulatorValue() const;
     int32_t getAccumulator() const { return m_accumulator; }
     int32_t getProgramCounter() const { return m_programCounter; }
+    int32_t getEntryAddress() const { return m_entryAddress; }
+    void setEntryAddress(int32_t addr) { m_entryAddress = (addr % MEMORY_SIZE + MEMORY_SIZE) % MEMORY_SIZE; }
     int32_t getMemory(int addr) const;
     const std::array<int32_t, MEMORY_SIZE> &getMemory() const { return m_memory; }
     bool isRunning() const { return m_running; }
@@ -94,6 +96,7 @@ private:
     std::array<int32_t, MEMORY_SIZE> m_memory;
     int32_t m_accumulator;   // Sign-magnitude format (same as memory)
     int32_t m_programCounter;
+    int32_t m_entryAddress;   // 程序入口地址
     bool m_running;
     bool m_halted;
     int32_t m_lastInstruction;
