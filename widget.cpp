@@ -56,154 +56,21 @@ void DJS103Widget::createUI()
     QVBoxLayout *mainLayout = new QVBoxLayout;
 
     // === Top: Register Display ===
-    QGroupBox *regGroup = new QGroupBox(tr("寄存器状态"));
+    QGroupBox *regGroup = new QGroupBox(tr(""));
     QGridLayout *regLayout = new QGridLayout;
 
     QFont monoFont("Monospace", 10);
-    QFont boldFont("Monospace", 10, QFont::Bold);
     QFont memFont("Monospace", 11, QFont::Bold);
 
-    // Create Reg C LED display
-    QWidget *regCLedFrame = createRegCLedDisplay(monoFont, boldFont);
-    regLayout->addWidget(regCLedFrame, 0, 0, Qt::AlignLeft | Qt::AlignTop);
-
-    // Create Select Memory (选存) LED display - 12 bits
-    QWidget *selectMemoryFrame = createSelectMemoryDisplay(monoFont, boldFont);
-    regLayout->addWidget(selectMemoryFrame, 0, 1, Qt::AlignLeft | Qt::AlignTop);
-
-    // Create Start Memory (启存) LED display - 12 bits
-    QWidget *startMemoryFrame = createStartMemoryDisplay(monoFont, boldFont);
-    regLayout->addWidget(startMemoryFrame, 0, 2, Qt::AlignLeft | Qt::AlignTop);
-
-    // LED display for 31-bit last instruction
-    // Groups: 1 (sign bit30), 6 (opcode bit24-29), 12 (addr1 bit12-23), 12 (addr2 bit0-11)
-    // Sub-groups of 3 LEDs labeled 1,2,4 (weight within each octal digit)
-    static const int ledGroups[] = {1, 6, 12, 12};
-    static const int numGroups = 4;
-    static const char *groupNames[] = {"符号", "操作码", "地址A", "地址B"};
-
-    // Register text labels
-    m_regCLabel = new QLabel(tr("累加器 r: 00000000000 (八进制)"));
-    m_regCValueLabel = new QLabel(tr("= 0.0000000000 (十进制小数)"));
-    m_pcLabel = new QLabel(tr("程序计数器 PC: 0000 (八进制) = 0 (十进制)"));
-    m_statusLabel = new QLabel(tr("状态: 停机"));
-    m_instLabel = new QLabel(tr("上次指令: 无"));
-
-    m_regCLabel->setFont(monoFont);
-    m_regCValueLabel->setFont(boldFont);
-    m_pcLabel->setFont(monoFont);
-    m_statusLabel->setFont(monoFont);
-    m_instLabel->setFont(monoFont);
-
-    regLayout->addWidget(m_regCLabel, 1, 0);
-    regLayout->addWidget(m_regCValueLabel, 1, 1);
-    regLayout->addWidget(m_pcLabel, 2, 0);
-    regLayout->addWidget(m_statusLabel, 2, 1);
-
-    QVBoxLayout *ledVLayout = new QVBoxLayout;
-
-    QHBoxLayout *ledOuterLayout = new QHBoxLayout;
-    QHBoxLayout *ledRowLayout = new QHBoxLayout;
-    ledRowLayout->setSpacing(30);
-
-    int bitIndex = 30; // start from highest bit
-    for (int g = 0; g < numGroups; ++g) {
-        int groupSize = ledGroups[g];
-
-        QVBoxLayout *groupVLayout = new QVBoxLayout;
-        groupVLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        groupVLayout->setSpacing(4);
-
-        // Group label
-        QLabel *groupLabel = new QLabel(tr(groupNames[g]));
-        groupLabel->setFont(QFont("Monospace", 7));
-        groupLabel->setAlignment(Qt::AlignCenter);
-        groupVLayout->addWidget(groupLabel);
-
-        // LED row: split into sub-groups of 3, labeled 4,2,1
-        QHBoxLayout *groupLedLayout = new QHBoxLayout;
-        groupLedLayout->setSpacing(10); // spacing between sub-groups
-
-        int remaining = groupSize;
-        while (remaining > 0) {
-            int subSize = (remaining >= 3) ? 3 : remaining;
-
-            QVBoxLayout *subVLayout = new QVBoxLayout;
-            subVLayout->setSpacing(0);
-
-            // Sub-group LED row
-            QHBoxLayout *subLedLayout = new QHBoxLayout;
-            subLedLayout->setSpacing(1);
-            for (int j = 0; j < subSize; ++j) {
-                int i = bitIndex - j;
-                m_leds[i] = new QLabel;
-                m_leds[i]->setFixedSize(14, 14);
-                m_leds[i]->setAlignment(Qt::AlignCenter);
-                m_leds[i]->setMargin(0);
-                m_leds[i]->setToolTip(tr("位 %1").arg(i));
-                subLedLayout->addWidget(m_leds[i]);
-            }
-            subVLayout->addLayout(subLedLayout);
-
-            // Sub-group weight labels: 4,2,1 (from high to low within each octal digit)
-            QHBoxLayout *subLabelLayout = new QHBoxLayout;
-            subLabelLayout->setSpacing(1);
-            static const char *weightLabels[] = {"4", "2", "1"};
-            for (int j = 0; j < subSize; ++j) {
-                QLabel *wLabel = new QLabel(tr(weightLabels[2 - (subSize - 1 - j)]));
-                wLabel->setFixedSize(14, 10);
-                wLabel->setAlignment(Qt::AlignCenter);
-                wLabel->setFont(QFont("Monospace", 6));
-                subLabelLayout->addWidget(wLabel);
-            }
-            subVLayout->addLayout(subLabelLayout);
-
-            groupLedLayout->addLayout(subVLayout);
-
-            bitIndex -= subSize;
-            remaining -= subSize;
-        }
-
-        groupVLayout->addLayout(groupLedLayout);
-
-        ledRowLayout->addLayout(groupVLayout);
-    }
-
-    ledOuterLayout->addLayout(ledRowLayout);
-    ledOuterLayout->addStretch(1);
-    ledVLayout->addLayout(ledOuterLayout);
-
-    regLayout->addLayout(ledVLayout, 4, 0, 1, 2);
-
-    regLayout->addWidget(m_instLabel, 5, 0, 1, 2);
+    // === 103机物理控制面板 (含寄存器C/选存/启存) ===
+    QWidget *frontPanel = createFrontPanel();
+    regLayout->addWidget(frontPanel, 0, 0, 1, 3, Qt::AlignLeft | Qt::AlignTop);
 
     regGroup->setLayout(regLayout);
 
-    // Settings & Help group
-    QGroupBox *settingsGroup = new QGroupBox(tr("设置与帮助"));
-    QVBoxLayout *settingsLayout = new QVBoxLayout;
-
-    QHBoxLayout *speedLayout = new QHBoxLayout;
-    speedLayout->addWidget(new QLabel(tr("速度:")));
-    QComboBox *speedCombo = new QComboBox;
-    speedCombo->addItem(tr("磁鼓存储器(30次/秒)"), 3);
-    speedCombo->addItem(tr("磁芯存储器(1800次/秒)"), 180);
-    speedCombo->setCurrentIndex(0);
-    m_runSpeed = 3;
-    speedLayout->addWidget(speedCombo);
-    speedLayout->addStretch();
-    settingsLayout->addLayout(speedLayout);
-
-    m_helpButton = new QPushButton(tr("帮助"));
-    settingsLayout->addWidget(m_helpButton);
-    settingsLayout->addStretch();
-
-    settingsGroup->setLayout(settingsLayout);
-
     mainLayout->addWidget(regGroup);
-    mainLayout->addWidget(settingsGroup);
 
-    // === Middle: Code Editor (left) + Control & Output (right) ===
+    // === Middle: Code Editor (left) + Output (middle) + Settings (right) ===
     QSplitter *midSplitter = new QSplitter(Qt::Horizontal);
 
     // -- Left: Code Editor --
@@ -231,12 +98,7 @@ void DJS103Widget::createUI()
     codeGroup->setLayout(codeLayout);
     midSplitter->addWidget(codeGroup);
 
-    // -- Right: Control + Output stacked vertically --
-    QWidget *rightPanel = new QWidget;
-    QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
-
-    // Output Console
+    // -- Middle: Output Console --
     QGroupBox *outGroup = new QGroupBox(tr("输出控制台"));
     QVBoxLayout *outLayout = new QVBoxLayout;
 
@@ -246,35 +108,31 @@ void DJS103Widget::createUI()
     outLayout->addWidget(m_outputEdit);
 
     outGroup->setLayout(outLayout);
-    rightLayout->addWidget(outGroup, 1);
+    midSplitter->addWidget(outGroup);
 
-    // Control Buttons
-    QGroupBox *ctrlGroup = new QGroupBox(tr("控制"));
-    QVBoxLayout *ctrlLayout = new QVBoxLayout;
+    // -- Right: Settings & Help --
+    QGroupBox *settingsGroup = new QGroupBox(tr("设置与帮助"));
+    QVBoxLayout *settingsLayout = new QVBoxLayout;
 
-    // Row 1: main buttons
-    QHBoxLayout *ctrlRow1 = new QHBoxLayout;
-    m_loadButton = new QPushButton(tr("装入程序"));
-    m_stepButton = new QPushButton(tr("单步执行"));
-    m_runButton = new QPushButton(tr("连续运行"));
-    m_stopButton = new QPushButton(tr("停止"));
-    m_resetButton = new QPushButton(tr("复位"));
+    QHBoxLayout *speedLayout = new QHBoxLayout;
+    speedLayout->addWidget(new QLabel(tr("速度:")));
+    QComboBox *speedCombo = new QComboBox;
+    speedCombo->addItem(tr("磁鼓存储器(30次/秒)"), 3);
+    speedCombo->addItem(tr("磁芯存储器(1800次/秒)"), 180);
+    speedCombo->setCurrentIndex(0);
+    m_runSpeed = 3;
+    speedLayout->addWidget(speedCombo);
+    speedLayout->addStretch();
+    settingsLayout->addLayout(speedLayout);
 
-    m_stopButton->setEnabled(false);
+    m_helpButton = new QPushButton(tr("帮助"));
+    settingsLayout->addWidget(m_helpButton);
+    settingsLayout->addStretch();
 
-    ctrlRow1->addWidget(m_loadButton);
-    ctrlRow1->addWidget(m_stepButton);
-    ctrlRow1->addWidget(m_runButton);
-    ctrlRow1->addWidget(m_stopButton);
-    ctrlRow1->addWidget(m_resetButton);
-    ctrlRow1->addStretch();
-    ctrlLayout->addLayout(ctrlRow1);
+    settingsGroup->setLayout(settingsLayout);
+    midSplitter->addWidget(settingsGroup);
 
-    ctrlGroup->setLayout(ctrlLayout);
-    rightLayout->addWidget(ctrlGroup);
-
-    midSplitter->addWidget(rightPanel);
-    midSplitter->setSizes(QList<int>() << 500 << 350);
+    midSplitter->setSizes(QList<int>() << 500 << 350 << 200);
     mainLayout->addWidget(midSplitter, 1);
 
     // === Bottom: Memory View ===
@@ -304,11 +162,6 @@ void DJS103Widget::createUI()
     setLayout(mainLayout);
 
     // === Connections ===
-    connect(m_loadButton, &QPushButton::clicked, this, &DJS103Widget::onLoadProgram);
-    connect(m_stepButton, &QPushButton::clicked, this, &DJS103Widget::onStep);
-    connect(m_runButton, &QPushButton::clicked, this, &DJS103Widget::onRun);
-    connect(m_stopButton, &QPushButton::clicked, this, &DJS103Widget::onStop);
-    connect(m_resetButton, &QPushButton::clicked, this, &DJS103Widget::onReset);
     connect(m_exampleButton, &QPushButton::clicked, this, &DJS103Widget::onLoadExample);
     connect(m_example2Button, &QPushButton::clicked, this, &DJS103Widget::onLoadExample2);
     connect(m_example3Button, &QPushButton::clicked, this, &DJS103Widget::onLoadExample3);
@@ -319,6 +172,20 @@ void DJS103Widget::createUI()
             this, [this, speedCombo]() {
         m_runSpeed = speedCombo->currentData().toInt();
     });
+
+    // Front panel connections
+    connect(m_fpStart, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelStart);
+    connect(m_fpSinglePulse, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelSinglePulse);
+    connect(m_fpClear0, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
+    connect(m_fpClear1, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
+    connect(m_fpClear2, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
+    connect(m_inputStart, &QPushButton::clicked, this, &DJS103Widget::onLoadProgram);
+    connect(m_inputStop, &QPushButton::clicked, this, &DJS103Widget::onInputStop);
+    connect(m_outputStart, &QPushButton::clicked, this, &DJS103Widget::onOutputStart);
+    connect(m_outputStop, &QPushButton::clicked, this, &DJS103Widget::onOutputStop);
+    connect(m_clearPulseDiv, &QPushButton::clicked, this, &DJS103Widget::onClearPulseDiv);
+    connect(m_magRead, &QPushButton::clicked, this, &DJS103Widget::onMagMemoryRead);
+    connect(m_magRecord, &QPushButton::clicked, this, &DJS103Widget::onMagMemoryRecord);
 
     // Run timer
     m_runTimer = new QTimer(this);
@@ -364,12 +231,6 @@ void DJS103Widget::onRun()
     }
 
     m_isRunning = true;
-    m_runButton->setEnabled(false);
-    m_stepButton->setEnabled(false);
-    m_loadButton->setEnabled(false);
-    m_stopButton->setEnabled(true);
-    m_resetButton->setEnabled(false);
-
     m_runTimer->start(100);
 }
 
@@ -378,12 +239,6 @@ void DJS103Widget::onStop()
     m_runTimer->stop();
     m_isRunning = false;
     m_emulator.stop();
-
-    m_runButton->setEnabled(true);
-    m_stepButton->setEnabled(true);
-    m_loadButton->setEnabled(true);
-    m_stopButton->setEnabled(false);
-    m_resetButton->setEnabled(true);
 
     updateRegisterDisplay();
     updateMemoryDisplay();
@@ -394,12 +249,6 @@ void DJS103Widget::onReset()
     m_runTimer->stop();
     m_isRunning = false;
     m_emulator.reset();
-
-    m_runButton->setEnabled(true);
-    m_stepButton->setEnabled(true);
-    m_loadButton->setEnabled(true);
-    m_stopButton->setEnabled(false);
-    m_resetButton->setEnabled(true);
 
     updateRegisterDisplay();
     updateMemoryDisplay();
@@ -625,59 +474,32 @@ void DJS103Widget::updateRegisterDisplay()
     int32_t pc = m_emulator.getProgramCounter();
     double regCValue = m_emulator.getAccumulatorValue();
 
-    m_regCLabel->setText(tr("累加器 r: %1 (八进制)")
-                        .arg(regC & DJS103Emulator::WORD_MASK, 11, 8, QChar('0')));
-    // 智能精度显示：找到最短的有效表示，避免暴露定点量化误差
-    QString regCStr;
-    double absVal = fabs(regCValue);
-    if (absVal == 0.0) {
-        regCStr = "0";
-    } else {
-        for (int prec = 1; prec <= 10; ++prec) {
-            QString test = QString::number(regCValue, 'f', prec);
-            if (fabs(test.toDouble() - regCValue) < 1e-12) {
-                regCStr = test;
-                break;
-            }
-        }
-        if (regCStr.isEmpty())
-            regCStr = QString::number(regCValue, 'f', 10);
-    }
-    m_regCValueLabel->setText(tr("= %1 (十进制小数)").arg(regCStr));
-    m_pcLabel->setText(tr("程序计数器 PC: %1 (八进制) = %2 (十进制)")
-                       .arg(pc, 4, 8, QChar('0'))
-                       .arg(pc));
 
-    if (m_emulator.isHalted()) {
-        m_statusLabel->setText(tr("状态: 停机"));
-        m_statusLabel->setStyleSheet("color: red;");
-    } else if (m_isRunning) {
-        m_statusLabel->setText(tr("状态: 运行中"));
-        m_statusLabel->setStyleSheet("color: green;");
-    } else {
-        m_statusLabel->setText(tr("状态: 就绪"));
-        m_statusLabel->setStyleSheet("color: blue;");
-    }
+    // Update regC LED display
+    updateRegCLedDisplay(regC);
 
-    // Decode last instruction
+    // 在输出控制台打印累加器的值
+    appendOutput(tr("累加器 C: %1, %2").arg(regC & DJS103Emulator::WORD_MASK, 11, 8, QChar('0'))
+                 .arg(regCValue));
+
+    // Update 操部 (opcode) LED display - 6 bits
     int32_t lastInst = m_emulator.getLastInstruction();
     if (lastInst != 0) {
         int opcode = m_emulator.getLastOpcode();
-        int addr1 = m_emulator.getLastAddr1();
-        int addr2 = m_emulator.getLastAddr2();
-        std::string mnemonic = m_emulator.getLastInstructionMnemonic();
-        m_instLabel->setText(tr("上次指令: %1  XY=%2 A=%3 B=%4  %5")
-                             .arg(lastInst & DJS103Emulator::WORD_MASK, 11, 8, QChar('0'))
-                             .arg(opcode, 2, 8, QChar('0'))
-                             .arg(addr1, 4, 8, QChar('0'))
-                             .arg(addr2, 4, 8, QChar('0'))
-                             .arg(QString::fromStdString(mnemonic)));
-    } else {
-        m_instLabel->setText(tr("上次指令: 无"));
+        for (int i = 0; i < 6; ++i) {
+            int bitPos = 5 - i;  // 反转位序：i=0对应最高位bit5，i=5对应最低位bit0
+            bool bitOn = (opcode >> bitPos) & 1;
+            if (bitOn) {
+                m_caobuLeds[i]->setStyleSheet(
+                    "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
+                    "border-radius: 7px; }");
+            } else {
+                m_caobuLeds[i]->setStyleSheet(
+                    "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+                    "border-radius: 7px; }");
+            }
+        }
     }
-
-    // Update regCumulator LED display
-    updateRegCLedDisplay(regC);
 
     // Update Select Memory LED display with PC value (12 bits)
     for (int i = 0; i < SELECT_MEMORY_BITS; ++i) {
@@ -708,23 +530,6 @@ void DJS103Widget::updateRegisterDisplay()
         }
     }
 
-    // Update LED display for 31-bit last instruction
-    int32_t regCBits = lastInst & DJS103Emulator::WORD_MASK;
-    for (int i = 0; i < NUM_LEDS; ++i) {
-        bool bitOn = (regCBits >> i) & 1;
-        if (bitOn) {
-            // LED on: bright colored circle
-            m_leds[i]->setStyleSheet(
-                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                "border-radius: 7px; }");
-        } else {
-            // LED off: dark circle
-            m_leds[i]->setStyleSheet(
-                "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
-                "border-radius: 7px; }");
-        }
-    }
-
     highlightCurrentLine();
 }
 
@@ -747,8 +552,6 @@ void DJS103Widget::updateRegCLedDisplay(int32_t value)
 
 /**
  * @brief 创建寄存器C的LED显示和开关控制面板
- * @param monoFont 等宽字体，用于数字显示
- * @param boldFont 粗体字体，用于标题
  * @return 包含LED显示和开关控制的QWidget
  *
  * 寄存器C共有31位（位0-位30），分为3组：7位、12位、12位
@@ -756,35 +559,23 @@ void DJS103Widget::updateRegCLedDisplay(int32_t value)
  * 布局采用每3位一组，便于查看八进制/二进制值
  * 每组3位对应的权重标签为：4、2、1（高位到低位）
  */
-QWidget* DJS103Widget::createRegCLedDisplay(QFont& monoFont, QFont& boldFont)
+QWidget* DJS103Widget::createRegCLedDisplay()
 {
-    // 寄存器C分组配置：共31位，分为3组
-    // 第1组：7位（位30-24），第2组：12位（位23-12），第3组：12位（位11-0）
     static const int regCLedGroups[] = {7, 12, 12};
     static const int regCNumGroups = 3;
-    static const char *regCGroupNames = "寄存器 C";
 
-    // 创建主框架，设置边框和背景样式
-    QWidget *regCLedFrame = new QWidget;
-    // 设置对象名用于样式表定位，限制水平方向最大尺寸
-    regCLedFrame->setObjectName("regCLedFrame");
+    QGroupBox *regCLedFrame = new QGroupBox(tr("寄存器 C"));
     regCLedFrame->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-    // 样式：灰色边框、圆角、内边距、半透明背景
-    regCLedFrame->setStyleSheet("QWidget#regCLedFrame {"
-                                "border: 2px solid #aaa;"
-                                "border-radius: 8px;"
-                                "padding: 8px;"
-                                "background-color: rgba(240, 240, 240, 30);"
-                                "}");
+    regCLedFrame->setStyleSheet(
+        "QGroupBox {"
+        "  color: #333; border: 1px solid #bbb; border-radius: 6px;"
+        "  margin-top: 10px; font-size: 12px; font-weight: bold;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin;  left: 45%; padding: 0 4px; }"
+    );
 
-    // 主垂直布局：标题 + LED/Switch行
+    // 主垂直布局
     QVBoxLayout *regCLedVLayout = new QVBoxLayout(regCLedFrame);
-
-    // 添加标题标签（"寄存器 C"），居中对齐，使用粗体
-    QLabel *regCTitle = new QLabel(tr(regCGroupNames));
-    regCTitle->setAlignment(Qt::AlignCenter);
-    regCTitle->setFont(boldFont);
-    regCLedVLayout->addWidget(regCTitle);
 
     // 外层水平布局：包含位显示区域 + 弹性空间
     QHBoxLayout *regCLedOuterLayout = new QHBoxLayout;
@@ -947,30 +738,20 @@ QWidget* DJS103Widget::createRegCLedDisplay(QFont& monoFont, QFont& boldFont)
     return regCLedFrame;  // 返回完整的寄存器C显示控件
 }
 
-QWidget* DJS103Widget::createSelectMemoryDisplay(QFont& monoFont, QFont& boldFont)
+QWidget* DJS103Widget::createSelectMemoryDisplay()
 {
-    // 选存：12位，不分组，连续显示
-    static const char *selectMemoryGroupName = "选存";
-
-    // 创建主框架，设置边框和背景样式（与createRegCLedDisplay风格一致）
-    QWidget *selectMemoryFrame = new QWidget;
-    selectMemoryFrame->setObjectName("selectMemoryFrame");
+    QGroupBox *selectMemoryFrame = new QGroupBox(tr("选存"));
     selectMemoryFrame->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-    selectMemoryFrame->setStyleSheet("QWidget#selectMemoryFrame {"
-                                     "border: 2px solid #aaa;"
-                                     "border-radius: 8px;"
-                                     "padding: 8px;"
-                                     "background-color: rgba(240, 240, 240, 30);"
-                                     "}");
+    selectMemoryFrame->setStyleSheet(
+        "QGroupBox {"
+        "  color: #333; border: 1px solid #bbb; border-radius: 6px;"
+        "  margin-top: 10px; font-size: 12px; font-weight: bold;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin;  left: 45%; padding: 0 4px; }"
+    );
 
-    // 主垂直布局：标题 + LED/Switch行
+    // 主垂直布局
     QVBoxLayout *selectMemoryVLayout = new QVBoxLayout(selectMemoryFrame);
-
-    // 添加标题标签（"选存"），居中对齐，使用粗体
-    QLabel *selectMemoryTitle = new QLabel(tr(selectMemoryGroupName));
-    selectMemoryTitle->setAlignment(Qt::AlignCenter);
-    selectMemoryTitle->setFont(boldFont);
-    selectMemoryVLayout->addWidget(selectMemoryTitle);
 
     // 外层水平布局：包含位显示区域 + 弹性空间
     QHBoxLayout *selectMemoryOuterLayout = new QHBoxLayout;
@@ -1053,30 +834,20 @@ QWidget* DJS103Widget::createSelectMemoryDisplay(QFont& monoFont, QFont& boldFon
     return selectMemoryFrame;
 }
 
-QWidget* DJS103Widget::createStartMemoryDisplay(QFont& monoFont, QFont& boldFont)
+QWidget* DJS103Widget::createStartMemoryDisplay()
 {
-    // 启存：12位，不分组，连续显示
-    static const char *startMemoryGroupName = "启存";
-
-    // 创建主框架，设置边框和背景样式（与createSelectMemoryDisplay风格一致）
-    QWidget *startMemoryFrame = new QWidget;
-    startMemoryFrame->setObjectName("startMemoryFrame");
+    QGroupBox *startMemoryFrame = new QGroupBox(tr("启存"));
     startMemoryFrame->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-    startMemoryFrame->setStyleSheet("QWidget#startMemoryFrame {"
-                                     "border: 2px solid #aaa;"
-                                     "border-radius: 8px;"
-                                     "padding: 8px;"
-                                     "background-color: rgba(240, 240, 240, 30);"
-                                     "}");
+    startMemoryFrame->setStyleSheet(
+        "QGroupBox {"
+        "  color: #333; border: 1px solid #bbb; border-radius: 6px;"
+        "  margin-top: 10px; font-size: 12px; font-weight: bold;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin;  left: 45%; padding: 0 4px; }"
+    );
 
-    // 主垂直布局：标题 + LED/Switch行
+    // 主垂直布局
     QVBoxLayout *startMemoryVLayout = new QVBoxLayout(startMemoryFrame);
-
-    // 添加标题标签（"启存"），居中对齐，使用粗体
-    QLabel *startMemoryTitle = new QLabel(tr(startMemoryGroupName));
-    startMemoryTitle->setAlignment(Qt::AlignCenter);
-    startMemoryTitle->setFont(boldFont);
-    startMemoryVLayout->addWidget(startMemoryTitle);
 
     // 外层水平布局：包含位显示区域 + 弹性空间
     QHBoxLayout *startMemoryOuterLayout = new QHBoxLayout;
@@ -1714,4 +1485,544 @@ void DJS103Widget::onHelp()
     layout->addLayout(btnLayout);
 
     dlg.exec();
+}
+
+// ==================== Front Panel Slot Implementations ====================
+
+void DJS103Widget::onFrontPanelStart()
+{
+    if (m_emulator.isHalted()) {
+        appendOutput(tr("[面板] 已停机，无法起动"));
+        return;
+    }
+    if (m_autoStep->isChecked()) {
+        // 连续运行
+        onRun();
+    } else {
+        // 步进模式：执行一步
+        m_emulator.step();
+        appendOutput(tr("[面板] 单步执行"));
+    }
+    updateRegisterDisplay();
+    updateMemoryDisplay();
+}
+
+void DJS103Widget::onFrontPanelSinglePulse()
+{
+    if (m_emulator.isHalted()) {
+        appendOutput(tr("[面板] 已停机，单脉冲无效"));
+        return;
+    }
+    m_emulator.step();
+    updateRegisterDisplay();
+    updateMemoryDisplay();
+    appendOutput(tr("[面板] 单脉冲"));
+}
+
+void DJS103Widget::onFrontPanelClear()
+{
+    m_emulator.reset();
+    m_runTimer->stop();
+    m_isRunning = false;
+    updateRegisterDisplay();
+    updateMemoryDisplay();
+    appendOutput(tr("[面板] 清除 - 复位完成"));
+}
+
+void DJS103Widget::onInputStop()
+{
+    appendOutput(tr("[面板-输入] 停止"));
+}
+
+void DJS103Widget::onOutputStart()
+{
+    appendOutput(tr("[面板-输出] 起动 - 接通%1, %2行, %3")
+                 .arg(m_outputConnect->isChecked() ? tr("接通") : tr("断开"))
+                 .arg(m_output4_5line->isChecked() ? "4行" : "5行")
+                 .arg(m_output8_10bit->isChecked() ? tr("8进制") : tr("10进制")));
+}
+
+void DJS103Widget::onOutputStop()
+{
+    appendOutput(tr("[面板-输出] 停止"));
+}
+
+void DJS103Widget::onClearPulseDiv()
+{
+    appendOutput(tr("[面板] 清除脉分 - 脉冲分配器已清零"));
+}
+
+void DJS103Widget::onMagMemoryRead()
+{
+    appendOutput(tr("[磁存锗] 读出操作"));
+}
+
+void DJS103Widget::onMagMemoryRecord()
+{
+    appendOutput(tr("[磁存锗] 记录操作"));
+}
+
+// ==================== Front Panel Implementation ====================
+
+/**
+ * 创建物理103机控制面板，模拟真实机器的前面板布局
+ * 包括: 操部、脉分、输入/输出区、工作区、自动区、磁存锗区等所有开关和按钮
+ */
+QWidget* DJS103Widget::createFrontPanel()
+{
+    QWidget *panel = new QWidget;
+    panel->setStyleSheet(
+        "QLabel { color: #333; }"
+        "QGroupBox {"
+        "  color: #333; border: 1px solid #bbb; border-radius: 6px;"
+        "  margin-top: 10px; font-size: 12px; font-weight: bold;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin;  left: 45%; padding: 0 4px; }"
+    );
+    panel->setFixedSize(1040, 400);
+
+    // ===== 顶部: 寄存器C / 选存 / 启存 =====
+    QWidget *regC = createRegCLedDisplay();
+    regC->setParent(panel);
+    regC->setGeometry(5, 8, 575, 85);
+
+    QWidget *selMem = createSelectMemoryDisplay();
+    selMem->setParent(panel);
+    selMem->setGeometry(590, 8, 220, 85);
+
+    QWidget *startMem = createStartMemoryDisplay();
+    startMem->setParent(panel);
+    startMem->setGeometry(820, 8, 220, 85);
+
+    // ===== 下方: 原有控制面板内容 (y偏移95px) =====
+    // 左列: 操部 / 脉分 / 清除脉分
+    QGroupBox *caobu = createCaobuGroup();
+    caobu->setParent(panel);
+    caobu->setGeometry(5, 95, 120, 75);
+
+    QGroupBox *maifen = createMaifenGroup();
+    maifen->setParent(panel);
+    maifen->setGeometry(5, 178, 120, 70);
+
+    createClearPulseDivBtn(panel, 40, 268);
+
+    // 左中列: 输入 / 输出
+    QGroupBox *inputGrp = createInputGroup();
+    inputGrp->setParent(panel);
+    inputGrp->setGeometry(140, 145, 140, 240);
+
+    QGroupBox *outputGrp = createOutputGroup();
+    outputGrp->setParent(panel);
+    outputGrp->setGeometry(290, 145, 140, 240);
+
+    // 中央列: 工作 / 中间按钮 / 自动 (全部在 createWorkSection 内)
+    QWidget *workSection = createWorkSection();
+    workSection->setParent(panel);
+    workSection->setGeometry(450, 100, 650, 260);
+
+    // 磁存锗
+    QGroupBox *mag = createMagGroup();
+    mag->setParent(panel);
+    mag->setGeometry(720, 285, 190, 100);
+
+    // 右列: S1/S2区 
+    QWidget *topRight = createTopRightSection();
+    topRight->setParent(panel);
+    topRight->setGeometry(920, 280, 90, 120);
+
+    return panel;
+}
+
+QGroupBox* DJS103Widget::createCaobuGroup()
+{
+    QGroupBox *caobuGroup = new QGroupBox(tr("操部"));
+    QVBoxLayout *caobuLayout = new QVBoxLayout(caobuGroup);
+    caobuLayout->setSpacing(4);
+    caobuLayout->setContentsMargins(6, 12, 6, 6);
+
+    QHBoxLayout *caobuLedLayout = new QHBoxLayout;
+    caobuLedLayout->setSpacing(4);
+    for (int i = 0; i < 6; ++i) {
+        m_caobuLeds[i] = new QLabel;
+        m_caobuLeds[i]->setFixedSize(14, 14);
+        m_caobuLeds[i]->setAlignment(Qt::AlignCenter);
+        m_caobuLeds[i]->setMargin(0);
+        m_caobuLeds[i]->setToolTip(tr("位 %1").arg(i));
+        caobuLedLayout->addWidget(m_caobuLeds[i]);
+    }
+    caobuLedLayout->addStretch();
+    caobuLayout->addLayout(caobuLedLayout);
+    return caobuGroup;
+}
+
+QGroupBox* DJS103Widget::createMaifenGroup()
+{
+    QGroupBox *maifenGroup = new QGroupBox(tr("脉分"));
+    QVBoxLayout *maifenLayout = new QVBoxLayout(maifenGroup);
+    maifenLayout->setSpacing(4);
+    maifenLayout->setContentsMargins(6, 12, 6, 6);
+
+    QHBoxLayout *maifenLedLayout = new QHBoxLayout;
+    maifenLedLayout->setSpacing(4);
+    for (int i = 0; i < 3; ++i) {
+        m_maifenLeds[i] = new QLabel;
+        m_maifenLeds[i]->setFixedSize(14, 14);
+        m_maifenLeds[i]->setAlignment(Qt::AlignCenter);
+        m_maifenLeds[i]->setMargin(0);
+        m_maifenLeds[i]->setToolTip(tr("位 %1").arg(i));
+        maifenLedLayout->addWidget(m_maifenLeds[i]);
+    }
+    maifenLedLayout->addStretch();
+    maifenLayout->addLayout(maifenLedLayout);
+    return maifenGroup;
+}
+
+QGroupBox* DJS103Widget::createInputGroup()
+{
+    QGroupBox *inputGroup = new QGroupBox(tr("输入"));
+    QVBoxLayout *inputLayout = new QVBoxLayout(inputGroup);
+    inputLayout->setSpacing(4);
+    inputLayout->setContentsMargins(6, 12, 6, 6);
+
+    QHBoxLayout *inputToggleRow = new QHBoxLayout;
+    inputToggleRow->setSpacing(4);
+    m_inputConnect = createToggleSwitch(tr("接通"), tr("断开"), inputToggleRow);
+    m_inputContinuous = createToggleSwitch(tr("连续"), tr("步进"), inputToggleRow);
+    m_input8_10bit = createToggleSwitch(tr("8进位"), tr("10进位"), inputToggleRow);
+    inputLayout->addLayout(inputToggleRow);
+
+    QHBoxLayout *inputBtnRow = new QHBoxLayout;
+    inputBtnRow->setSpacing(8);
+    m_inputStart = createPushSwitch(tr("起动"), inputBtnRow);
+    m_inputStop = createPushSwitch(tr("停止"), inputBtnRow);
+    inputLayout->addLayout(inputBtnRow);
+    return inputGroup;
+}
+
+QGroupBox* DJS103Widget::createOutputGroup()
+{
+    QGroupBox *outputGroup = new QGroupBox(tr("输出"));
+    QVBoxLayout *outputLayout = new QVBoxLayout(outputGroup);
+    outputLayout->setSpacing(4);
+    outputLayout->setContentsMargins(6, 12, 6, 6);
+
+    QHBoxLayout *outputToggleRow = new QHBoxLayout;
+    outputToggleRow->setSpacing(4);
+    m_outputConnect = createToggleSwitch(tr("接通"), tr("断开"), outputToggleRow);
+    m_output4_5line = createToggleSwitch(tr("4行"), tr("5行"), outputToggleRow);
+    m_output8_10bit = createToggleSwitch(tr("8进位"), tr("10进位"), outputToggleRow);
+    outputLayout->addLayout(outputToggleRow);
+
+    QHBoxLayout *outputBtnRow = new QHBoxLayout;
+    outputBtnRow->setSpacing(8);
+    m_outputStart = createPushSwitch(tr("起动"), outputBtnRow);
+    m_outputStop = createPushSwitch(tr("停止"), outputBtnRow);
+    outputLayout->addLayout(outputBtnRow);
+    return outputGroup;
+}
+
+QWidget* DJS103Widget::createWorkSection()
+{
+    QWidget *workWidget = new QWidget;
+
+    QWidget *switchRow = createWorkSwitchRow();
+    switchRow->setParent(workWidget);
+    switchRow->setGeometry(85, 0, 120, 90);
+
+    QWidget *haltRow = createHaltAddrRow();
+    haltRow->setParent(workWidget);
+    haltRow->setGeometry(230, 50, 355, 90);
+
+    QWidget *centerBtns = createCenterButtons();
+    centerBtns->setParent(workWidget);
+    centerBtns->setGeometry(0, 94, 450, 60);
+
+    QWidget *autoSection = createAutoSection();
+    autoSection->setParent(workWidget);
+    autoSection->setGeometry(40, 158, 200, 90);
+
+    return workWidget;
+}
+
+QWidget* DJS103Widget::createWorkSwitchRow()
+{
+    QWidget *widget = new QWidget;
+    QHBoxLayout *workSwitchRow = new QHBoxLayout(widget);
+    workSwitchRow->setContentsMargins(0, 0, 0, 0);
+    workSwitchRow->setSpacing(6);
+    // workSwitchRow->addStretch();
+    m_workC = createToggleSwitch(tr("C"), tr(" "), workSwitchRow);
+    m_workSelectMem = createToggleSwitch(tr("选存"), tr("记存"), workSwitchRow);
+    m_workStartMem = createToggleSwitch(tr("启存"), tr(" "), workSwitchRow);
+    return widget;
+}
+
+QWidget* DJS103Widget::createHaltAddrRow()
+{
+    QWidget *widget = new QWidget;
+    QVBoxLayout *haltAddrVL = new QVBoxLayout(widget);
+    haltAddrVL->setContentsMargins(0, 0, 0, 0);
+    haltAddrVL->setSpacing(1);
+
+    QHBoxLayout *haltAddrRow = new QHBoxLayout;
+    haltAddrRow->setSpacing(2);
+    const int compactW = 28, compactH = 80;
+    m_haltAddr0 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr1 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr2 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr3 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr4 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr5 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr6 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr7 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr8 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr9 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr10 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    m_haltAddr11 = createToggleSwitch(tr(" "), tr(" "), haltAddrRow, compactW, compactH);
+    haltAddrVL->addLayout(haltAddrRow);
+
+    QLabel *haltAddrLabel = new QLabel(tr("停机地址"));
+    haltAddrLabel->setAlignment(Qt::AlignCenter);
+    haltAddrLabel->setStyleSheet("color: #333; font-size: 9px; font-weight: bold; background: transparent;");
+    haltAddrVL->addWidget(haltAddrLabel);
+
+    m_haltAddrGroup = new QButtonGroup(this);
+    m_haltAddrGroup->setExclusive(false);
+    m_haltAddrGroup->addButton(m_haltAddr0);
+    m_haltAddrGroup->addButton(m_haltAddr1);
+    m_haltAddrGroup->addButton(m_haltAddr2);
+    m_haltAddrGroup->addButton(m_haltAddr3);
+    m_haltAddrGroup->addButton(m_haltAddr4);
+    m_haltAddrGroup->addButton(m_haltAddr5);
+    m_haltAddrGroup->addButton(m_haltAddr6);
+    m_haltAddrGroup->addButton(m_haltAddr7);
+    m_haltAddrGroup->addButton(m_haltAddr8);
+    m_haltAddrGroup->addButton(m_haltAddr9);
+    m_haltAddrGroup->addButton(m_haltAddr10);
+    m_haltAddrGroup->addButton(m_haltAddr11);
+
+    return widget;
+}
+
+QWidget* DJS103Widget::createCenterButtons()
+{
+    QWidget *widget = new QWidget;
+    QHBoxLayout *layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(12);
+    m_fpStart = createPushSwitch(tr("起动"), layout);
+    m_fpSinglePulse = createPushSwitch(tr("单脉冲"), layout);
+    m_fpClear0 = createPushSwitch(tr(" "), layout);
+    m_fpClear1 = createPushSwitch(tr("清除"), layout);
+    m_fpClear2 = createPushSwitch(tr(" "), layout);
+    layout->addStretch();
+    return widget;
+}
+
+QWidget* DJS103Widget::createAutoSection()
+{
+    QWidget *autoWidget = new QWidget;
+    QVBoxLayout *autoVLayout = new QVBoxLayout(autoWidget);
+    autoVLayout->setContentsMargins(0, 0, 0, 0);
+    autoVLayout->setSpacing(2);
+
+    QHBoxLayout *autoRow1 = new QHBoxLayout;
+    autoRow1->setSpacing(4);
+    QWidget *stepSw = new QWidget;
+    QVBoxLayout *stepVL = new QVBoxLayout(stepSw);
+    stepVL->setContentsMargins(0,0,0,0); stepVL->setSpacing(1);
+    m_autoStep = createToggleSwitch(tr("自动"), tr("步进"), stepVL);
+    QWidget *haltSw = new QWidget;
+    QVBoxLayout *haltVL = new QVBoxLayout(haltSw);
+    haltVL->setContentsMargins(0,0,0,0); haltVL->setSpacing(1);
+    m_autoHalt = createToggleSwitch(tr("自动工作"), tr("停机"), haltVL);
+    QWidget *selmemSw = new QWidget;
+    QVBoxLayout *selmemVL = new QVBoxLayout(selmemSw);
+    selmemVL->setContentsMargins(0,0,0,0); selmemVL->setSpacing(1);
+    m_autoSelectMem = createToggleSwitch(tr("启存"), tr("选存"), selmemVL);
+    autoRow1->addWidget(stepSw);
+    autoRow1->addWidget(haltSw);
+    autoRow1->addWidget(selmemSw);
+    autoVLayout->addLayout(autoRow1);
+    return autoWidget;
+}
+
+QWidget* DJS103Widget::createTopRightSection()
+{
+    QWidget *widget = new QWidget;
+    QHBoxLayout *layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(0,0,0,0);
+    layout->setSpacing(4);
+
+    QHBoxLayout *s1Row = new QHBoxLayout;
+    m_s1Switch = createPushSwitch(tr("S1"), s1Row);
+    s1Row->addStretch();
+    layout->addLayout(s1Row);
+
+    QHBoxLayout *s2Row = new QHBoxLayout;
+    m_s2Switch = createPushSwitch(tr("S2"), s2Row);
+    s2Row->addStretch();
+    layout->addLayout(s2Row);
+    return widget;
+}
+
+QGroupBox* DJS103Widget::createMagGroup()
+{
+    QGroupBox *magGroup = new QGroupBox(tr("磁存锗"));
+    QVBoxLayout *magLayout = new QVBoxLayout(magGroup);
+    magLayout->setSpacing(8);
+    magLayout->setContentsMargins(10, 14, 10, 10);
+
+    QHBoxLayout *magBtnRow = new QHBoxLayout;
+    magBtnRow->setSpacing(12);
+    m_magRead = createPushSwitch(tr("读出"), magBtnRow);
+    m_magRecord = createPushSwitch(tr("记录"), magBtnRow);
+    magLayout->addLayout(magBtnRow);
+    return magGroup;
+}
+
+void DJS103Widget::createClearPulseDivBtn(QWidget *parent, int x, int y)
+{
+    QWidget *container = new QWidget(parent);
+    QVBoxLayout *vLayout = new QVBoxLayout(container);
+    vLayout->setSpacing(2);
+    vLayout->setContentsMargins(2, 2, 2, 2);
+    m_clearPulseDiv = createPushSwitch(tr("清除脉分"), vLayout);
+    container->setGeometry(x, y, 70, 56);
+}
+
+QCheckBox* DJS103Widget::createToggleSwitch(const QString &topLabel, const QString &bottomLabel, QBoxLayout *layout, int switchWidth, int switchHeight)
+{
+    // QCheckBox 作为整体容器，隐藏默认 indicator，用 QSlider 实现拨动效果
+    QCheckBox *sw = new QCheckBox;
+    sw->setChecked(true);
+    sw->setFixedSize(switchWidth, switchHeight);
+    sw->setStyleSheet("QCheckBox { spacing: 0px; background: transparent; padding: 0px; }"
+                      "QCheckBox::indicator { width: 0px; height: 0px; margin: 0px; border: 0px; padding: 0px; }");
+
+    QVBoxLayout *vLayout = new QVBoxLayout(sw);
+    vLayout->setContentsMargins(1, 1, 1, 1);
+    vLayout->setSpacing(0);
+    vLayout->setAlignment(Qt::AlignCenter);
+
+    // 上方文字
+    if (!topLabel.isEmpty()) {
+        QLabel *top = new QLabel(topLabel);
+        top->setAlignment(Qt::AlignCenter);
+        top->setStyleSheet("color: #333; font-size: 9px; font-weight: bold; background: transparent;");
+        vLayout->addWidget(top);
+    }
+
+    // 可见的 QSlider 实现上下拨动效果
+    int grooveWidth = qMax(switchWidth - 6, 16);
+    int trackHeight = switchHeight;
+    if (!topLabel.isEmpty()) trackHeight -= 14;
+    if (!bottomLabel.isEmpty()) trackHeight -= 14;
+
+    QSlider *slider = new QSlider(Qt::Vertical);
+    slider->setRange(0, 1);
+    slider->setValue(1);
+    slider->setFixedSize(switchWidth, qMax(trackHeight, 20));
+
+    // 滑块尺寸：handle 宽高相等，形成可抓握的圆形
+    int handleSize = grooveWidth-2;
+
+    slider->setStyleSheet(QString(
+        "QSlider::groove:vertical {"
+        "  width: %1px; height: %2px;"
+        "  border: 1px solid #555; border-radius: %3px;"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #444, stop:0.5 #555, stop:1 #666);"
+        "}"
+        "QSlider::handle:vertical {"
+        "  width: %4px; height: %4px;"
+        "  margin: 0 -%5px;"
+        "  border: 1px solid #999; border-radius: %6px;"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #f0f0f0, stop:0.4 #ccc, stop:1 #999);"
+        "}"
+        "QSlider::handle:vertical:hover {"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #fff, stop:0.4 #ddd, stop:1 #aaa);"
+        "  border-color: #bba;"
+        "}"
+    ).arg(grooveWidth).arg(trackHeight - handleSize + handleSize / 2)
+     .arg(grooveWidth / 2 + 1)
+     .arg(handleSize)
+     .arg((handleSize - grooveWidth) / 2 + 1)
+     .arg(handleSize / 2 + 1));
+
+    vLayout->addWidget(slider, 0, Qt::AlignHCenter);
+
+    // 同步 slider 和 checkbox 状态
+    QObject::connect(slider, &QSlider::valueChanged, sw, [sw](int val) {
+        sw->setChecked(val == 1);
+    });
+    QObject::connect(sw, &QCheckBox::toggled, slider, [slider](bool checked) {
+        slider->setValue(checked ? 1 : 0);
+    });
+
+    // indicator 隐藏后点击不会自动切换，手动切换 slider
+    QObject::connect(sw, &QCheckBox::clicked, slider, [slider]() {
+        slider->setValue(slider->value() == 0 ? 1 : 0);
+    });
+
+    // 下方文字
+    if (!bottomLabel.isEmpty()) {
+        QLabel *bottom = new QLabel(bottomLabel);
+        bottom->setAlignment(Qt::AlignCenter);
+        bottom->setStyleSheet("color: #333; font-size: 9px; font-weight: bold; background: transparent;");
+        vLayout->addWidget(bottom);
+    }
+
+    if (layout)
+        layout->addWidget(sw);
+
+    return sw;
+}
+
+QPushButton* DJS103Widget::createPushSwitch(const QString &name, QBoxLayout *layout, int buttonSize)
+{
+    // 外层容器：圆形按钮 + 下方文字标签
+    QWidget *container = new QWidget;
+    QVBoxLayout *vLayout = new QVBoxLayout(container);
+    vLayout->setSpacing(2);
+    vLayout->setContentsMargins(2, 2, 2, 2);
+    vLayout->setAlignment(Qt::AlignCenter);
+
+    // 圆形按钮
+    QPushButton *btn = new QPushButton;
+    btn->setFixedSize(buttonSize, buttonSize);
+    btn->setToolTip(name);
+    QString style = QString(
+        "QPushButton {"
+        "  background-color: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #e8d5a0, stop:1 #c4a030);"
+        "  border: 2px solid #8b6914;"
+        "  border-radius: %1px;"
+        "}"
+        "QPushButton:hover {"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #f0e0b0, stop:1 #d4b040);"
+        "}"
+        "QPushButton:pressed {"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+        "      stop:0 #b09020, stop:1 #8b6914);"
+        "  border-style: inset;"
+        "}"
+    ).arg(buttonSize / 2);
+    btn->setStyleSheet(style);
+
+    // 文字标签
+    QLabel *label = new QLabel(name);
+    label->setAlignment(Qt::AlignCenter);
+    label->setStyleSheet("color: #333; font-size: 9px; font-weight: bold; background: transparent;");
+
+    vLayout->addWidget(btn, 0, Qt::AlignHCenter);
+    vLayout->addWidget(label);
+
+    if (layout)
+        layout->addWidget(container);
+
+    return btn;
 }
