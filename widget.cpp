@@ -483,16 +483,17 @@ void DJS103Widget::updateRegisterDisplay()
                  .arg(regCValue));
 
     // Update 操部 (opcode) LED display - 6 bits
-    int32_t lastInst = m_emulator.getLastInstruction();
-    if (lastInst != 0) {
+    {
         int opcode = m_emulator.getLastOpcode();
         for (int i = 0; i < 6; ++i) {
             int bitPos = 5 - i;  // 反转位序：i=0对应最高位bit5，i=5对应最低位bit0
             bool bitOn = (opcode >> bitPos) & 1;
             if (bitOn) {
                 m_caobuLeds[i]->setStyleSheet(
-                    "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                    "border-radius: 7px; }");
+                    "QLabel { background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5, "
+                    "fx:0.35, fy:0.35, stop:0 #ffcc77, stop:0.3 #ff8a4a, "
+                    "stop:0.7 #ff6a3d, stop:1 #cc4400); "
+                    "border: 1px solid #ffaa66; border-radius: 7px; }");
             } else {
                 m_caobuLeds[i]->setStyleSheet(
                     "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
@@ -506,8 +507,10 @@ void DJS103Widget::updateRegisterDisplay()
         bool bitOn = (pc >> i) & 1;
         if (bitOn) {
             m_selectMemoryLeds[i]->setStyleSheet(
-                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                "border-radius: 7px; }");
+                "QLabel { background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5, "
+                "fx:0.35, fy:0.35, stop:0 #ffcc77, stop:0.3 #ff8a4a, "
+                "stop:0.7 #ff6a3d, stop:1 #cc4400); "
+                "border: 1px solid #ffaa66; border-radius: 7px; }");
         } else {
             m_selectMemoryLeds[i]->setStyleSheet(
                 "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
@@ -521,8 +524,10 @@ void DJS103Widget::updateRegisterDisplay()
         bool bitOn = (entryAddr >> i) & 1;
         if (bitOn) {
             m_startMemoryLeds[i]->setStyleSheet(
-                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                "border-radius: 7px; }");
+                "QLabel { background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5, "
+                "fx:0.35, fy:0.35, stop:0 #ffcc77, stop:0.3 #ff8a4a, "
+                "stop:0.7 #ff6a3d, stop:1 #cc4400); "
+                "border: 1px solid #ffaa66; border-radius: 7px; }");
         } else {
             m_startMemoryLeds[i]->setStyleSheet(
                 "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
@@ -540,8 +545,10 @@ void DJS103Widget::updateRegCLedDisplay(int32_t value)
         bool bitOn = (regCLedBits >> i) & 1;
         if (bitOn) {
             m_regCLeds[i]->setStyleSheet(
-                "QLabel { background-color: #ff3030; border: 1px solid #cc0000; "
-                "border-radius: 7px; }");
+                "QLabel { background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5, "
+                "fx:0.35, fy:0.35, stop:0 #ffcc77, stop:0.3 #ff8a4a, "
+                "stop:0.7 #ff6a3d, stop:1 #cc4400); "
+                "border: 1px solid #ffaa66; border-radius: 7px; }");
         } else {
             m_regCLeds[i]->setStyleSheet(
                 "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
@@ -1647,6 +1654,9 @@ QGroupBox* DJS103Widget::createCaobuGroup()
         m_caobuLeds[i]->setFixedSize(14, 14);
         m_caobuLeds[i]->setAlignment(Qt::AlignCenter);
         m_caobuLeds[i]->setMargin(0);
+        m_caobuLeds[i]->setStyleSheet(
+            "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+            "border-radius: 7px; }");
         m_caobuLeds[i]->setToolTip(tr("位 %1").arg(i));
         caobuLedLayout->addWidget(m_caobuLeds[i]);
     }
@@ -1669,6 +1679,9 @@ QGroupBox* DJS103Widget::createMaifenGroup()
         m_maifenLeds[i]->setFixedSize(14, 14);
         m_maifenLeds[i]->setAlignment(Qt::AlignCenter);
         m_maifenLeds[i]->setMargin(0);
+        m_maifenLeds[i]->setStyleSheet(
+            "QLabel { background-color: #3a3a3a; border: 1px solid #555555; "
+            "border-radius: 7px; }");
         m_maifenLeds[i]->setToolTip(tr("位 %1").arg(i));
         maifenLedLayout->addWidget(m_maifenLeds[i]);
     }
