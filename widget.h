@@ -57,7 +57,9 @@ private slots:
     // Front panel slots
     void onFrontPanelStart();
     void onFrontPanelSinglePulse();
-    void onFrontPanelClear();
+    void onFrontPanelClear0();
+    void onFrontPanelClear1();
+    void onFrontPanelClear2();
     void onInputStop();
     void onOutputStart();
     void onOutputStop();

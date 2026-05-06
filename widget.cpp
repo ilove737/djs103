@@ -176,9 +176,9 @@ void DJS103Widget::createUI()
     // Front panel connections
     connect(m_fpStart, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelStart);
     connect(m_fpSinglePulse, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelSinglePulse);
-    connect(m_fpClear0, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
-    connect(m_fpClear1, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
-    connect(m_fpClear2, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear);
+    connect(m_fpClear0, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear0);
+    connect(m_fpClear1, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear1);
+    connect(m_fpClear2, &QPushButton::clicked, this, &DJS103Widget::onFrontPanelClear2);
     connect(m_inputStart, &QPushButton::clicked, this, &DJS103Widget::onLoadProgram);
     connect(m_inputStop, &QPushButton::clicked, this, &DJS103Widget::onInputStop);
     connect(m_outputStart, &QPushButton::clicked, this, &DJS103Widget::onOutputStart);
@@ -1526,14 +1526,31 @@ void DJS103Widget::onFrontPanelSinglePulse()
     appendOutput(tr("[面板] 单脉冲"));
 }
 
-void DJS103Widget::onFrontPanelClear()
+void DJS103Widget::onFrontPanelClear0()
 {
-    m_emulator.reset();
-    m_runTimer->stop();
-    m_isRunning = false;
+    // 清除寄存器C（累加器）
+    m_emulator.setAccumulator(0);
     updateRegisterDisplay();
     updateMemoryDisplay();
-    appendOutput(tr("[面板] 清除 - 复位完成"));
+    appendOutput(tr("[面板] 清除寄存器C"));
+}
+
+void DJS103Widget::onFrontPanelClear1()
+{
+    // 清除选存（程序计数器PC）
+    m_emulator.setProgramCounter(0);
+    updateRegisterDisplay();
+    updateMemoryDisplay();
+    appendOutput(tr("[面板] 清除选存"));
+}
+
+void DJS103Widget::onFrontPanelClear2()
+{
+    // 清除启存（入口地址）
+    m_emulator.setEntryAddress(0);
+    updateRegisterDisplay();
+    updateMemoryDisplay();
+    appendOutput(tr("[面板] 清除启存"));
 }
 
 void DJS103Widget::onInputStop()
